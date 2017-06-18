@@ -28,7 +28,7 @@ void divide_row(int Mdim, int Ndim, int Pdim, double* A, double* B, double* C, L
 
 void par_mat_mul(int K, int L, double* A, double* B, double* C, int N, int M, int P)
 {
-    //Create LSH (Assuming that this runs in parallel)
+    //Create LSH (Assuming that this runs in parallel) =============================
     LSH *_Algo = new LSH(K, L);
     SignedRandomProjection *proj = new SignedRandomProjection(Mdim, K * L);
     cout<<"Making Hash Table from B."<<endl;
@@ -44,6 +44,7 @@ void par_mat_mul(int K, int L, double* A, double* B, double* C, int N, int M, in
         int * hashes = proj->getHash(arr, Pdim);
         _Algo->add(hashes, c + 1);
     }
+    //=============================================================================== 
 
     const dim3 blockSize(N, 1, 1);
     const dim3 gridSize(1, 1, 1);
