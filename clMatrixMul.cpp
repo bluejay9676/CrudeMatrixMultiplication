@@ -8,6 +8,7 @@
 #include "lshr.h"
 #include "all.h"
 #include "indexing.h"
+#include "param.h"
 
 int Bucket::_size = 64; //use more if the buckets are heavy
 
@@ -16,7 +17,20 @@ using namespace std;
 
 void parMatMul(int K, int L, double* A, double* B, double* C, int N, int M, int P)
 {   
+    //Create LSH (Assuming that this runs in parallel) =============================
     //Assuming that lshr_init.cpp initiates the kernel.
+    //TODO add MatrixMul Kernel to lshr_init
+    LSHReservoirSampler *myReservoir = new LSHReservoirSampler(NUMTABLES, NUMHASH, RESERVOIR_SIZE, PROBES, SAMFACTOR);
+    for (size_t c = 0; c < Mdim; c++)
+    {
+        float arr[Pdim];
+        for (size_t r = 0; r < Pdim; r++)
+        {
+            arr[r] = (float) B[r * Mdim + c];
+            cout<<arr[r]<<" ";
+        }
+        myReservoir->hashToTable(Pdim, arr);
+    }
 
     //Create buffers for the input and output
     inputA = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(double) * (N * P), NULL, NULL);
@@ -34,6 +48,7 @@ void parMatMul(int K, int L, double* A, double* B, double* C, int N, int M, int 
     clSetKernelArg(kernel, 3, sizeof(cl_mem), &inputA);
     clSetKernelArg(kernel, 4, sizeof(cl_mem), &inputB);
     clSetKernelArg(kernel, 5, sizeof(cl_mem), &output);
+    clSetKernelArg(kernel, 6, sizeof(LSHReservoirSampler), (void *)myReservoir)
     // The arguments will differ according to the LSH_GPU code.
 
     // enqueue the kernel command for execution
@@ -47,29 +62,4 @@ void parMatMul(int K, int L, double* A, double* B, double* C, int N, int M, int 
     clReleaseMemObject(inputA);
     clReleaseMemObject(inputB);
     clReleaseMemObject(output);
-
-    //Create LSH (Assuming that this runs in parallel) =============================
-    //This could go away depending on the LSH_GPU code.
-    /*
-    LSH *_Algo = new LSH(K, L);
-    SignedRandomProjection *proj = new SignedRandomProjection(Mdim, K * L);
-    cout<<"Making Hash Table from B."<<endl;
-    for (size_t c = 0; c < Mdim; c++)
-    {
-        double arr[Pdim];
-        for (size_t r = 0; r < Pdim; r++)
-        {
-            arr[r] = B[r * Mdim + c];
-            cout<<arr[r]<<" ";
-        }
-        cout<<endl;
-        int * hashes = proj->getHash(arr, Pdim);
-        _Algo->add(hashes, c + 1);
-    }
-    //=============================================================================== 
-
-    //Run each row of A in parallel.
-    //Divide into N
-    divideRow(M, N, P, (double *) A, (double *) B, (double *) C, (LSH *) _Algo, (SignedRandomProjection *) proj);
-    */
 }
